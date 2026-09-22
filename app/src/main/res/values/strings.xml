@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Moto Analisador</string>
+
+    <string name="accessibility_service_description">
+        Moto Analisador: lê as informações exibidas na tela para auxiliar na análise das corridas.
+    </string>
+
+</resources>
