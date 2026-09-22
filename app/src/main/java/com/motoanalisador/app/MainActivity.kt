@@ -1,13 +1,17 @@
 package com.motoanalisador.app
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.provider.Settings
 import android.text.InputType
 import android.view.Gravity
 import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import java.text.DateFormat
 import java.text.NumberFormat
+import java.util.Date
 import java.util.Locale
 
 class MainActivity : AppCompatActivity() {
@@ -19,6 +23,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var minutos: EditText
     private lateinit var limiteBoa: EditText
     private lateinit var limiteRegular: EditText
+
+    private lateinit var diagnosticoPacote: TextView
+    private lateinit var diagnosticoTexto: TextView
+    private lateinit var diagnosticoHorario: TextView
 
     private val prefs by lazy {
         getSharedPreferences("moto_analisador", MODE_PRIVATE)
@@ -83,25 +91,12 @@ class MainActivity : AppCompatActivity() {
         )
 
         resultado = TextView(this).apply {
-
             text = "Informe os dados da corrida."
-
             textSize = 21f
-
             gravity = Gravity.CENTER
-
             setTextColor(Color.WHITE)
-
-            setPadding(
-                20,
-                28,
-                20,
-                28
-            )
-
-            setBackgroundColor(
-                Color.DKGRAY
-            )
+            setPadding(20, 28, 20, 28)
+            setBackgroundColor(Color.DKGRAY)
         }
 
         tela.addView(
@@ -115,7 +110,6 @@ class MainActivity : AppCompatActivity() {
         )
 
         val limpar = Button(this).apply {
-
             text = "LIMPAR"
 
             setOnClickListener {
@@ -165,11 +159,9 @@ class MainActivity : AppCompatActivity() {
         )
 
         tela.addView(limiteBoa)
-
         tela.addView(limiteRegular)
 
         val salvar = Button(this).apply {
-
             text = "SALVAR CONFIGURAÇÕES"
 
             setOnClickListener {
@@ -186,7 +178,177 @@ class MainActivity : AppCompatActivity() {
             )
         )
 
+        /*
+         * PAINEL DE DIAGNÓSTICO DA VERSÃO 0.3
+         */
+
+        tela.addView(
+            texto(
+                "🔎 Leitura automática — teste 0.3",
+                21f
+            ),
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 30
+            }
+        )
+
+        tela.addView(
+            texto(
+                "Nesta etapa vamos verificar quais informações da tela podem ser lidas pelo Moto Analisador.",
+                14f
+            )
+        )
+
+        val ativarLeitura = Button(this).apply {
+            text = "ATIVAR LEITURA DA TELA"
+
+            setOnClickListener {
+                try {
+                    startActivity(
+                        Intent(
+                            Settings.ACTION_ACCESSIBILITY_SETTINGS
+                        )
+                    )
+                } catch (e: Exception) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Não foi possível abrir as configurações de acessibilidade.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+
+        tela.addView(
+            ativarLeitura,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 12
+            }
+        )
+
+        val atualizarLeitura = Button(this).apply {
+            text = "ATUALIZAR LEITURA"
+
+            setOnClickListener {
+                atualizarDiagnostico()
+            }
+        }
+
+        tela.addView(
+            atualizarLeitura,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 8
+            }
+        )
+
+        diagnosticoPacote = TextView(this).apply {
+            text = "Aplicativo detectado: nenhum"
+            textSize = 14f
+            setTextColor(Color.LTGRAY)
+            setPadding(12, 18, 12, 4)
+        }
+
+        tela.addView(diagnosticoPacote)
+
+        diagnosticoHorario = TextView(this).apply {
+            text = "Última leitura: nenhuma"
+            textSize = 13f
+            setTextColor(Color.LTGRAY)
+            setPadding(12, 4, 12, 10)
+        }
+
+        tela.addView(diagnosticoHorario)
+
+        diagnosticoTexto = TextView(this).apply {
+            text = "Nenhum texto capturado ainda."
+            textSize = 15f
+            setTextColor(Color.WHITE)
+            setPadding(20, 20, 20, 20)
+            setBackgroundColor(
+                Color.rgb(35, 38, 44)
+            )
+        }
+
+        tela.addView(
+            diagnosticoTexto,
+            LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                topMargin = 8
+                bottomMargin = 30
+            }
+        )
+
+        atualizarDiagnostico()
+
         setContentView(scroll)
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        if (::diagnosticoTexto.isInitialized) {
+            atualizarDiagnostico()
+        }
+    }
+
+    private fun atualizarDiagnostico() {
+
+        val pacote =
+            prefs.getString(
+                MotoAccessibilityService.CHAVE_PACOTE,
+                null
+            )
+
+        val textoCapturado =
+            prefs.getString(
+                MotoAccessibilityService.CHAVE_TEXTO_TELA,
+                null
+            )
+
+        val horario =
+            prefs.getLong(
+                MotoAccessibilityService.CHAVE_HORARIO,
+                0L
+            )
+
+        diagnosticoPacote.text =
+            if (pacote.isNullOrBlank()) {
+                "Aplicativo detectado: nenhum"
+            } else {
+                "Aplicativo detectado: $pacote"
+            }
+
+        diagnosticoTexto.text =
+            if (textoCapturado.isNullOrBlank()) {
+                "Nenhum texto capturado ainda."
+            } else {
+                textoCapturado
+            }
+
+        diagnosticoHorario.text =
+            if (horario <= 0L) {
+                "Última leitura: nenhuma"
+            } else {
+                "Última leitura: " +
+                    DateFormat.getDateTimeInstance(
+                        DateFormat.SHORT,
+                        DateFormat.MEDIUM,
+                        Locale("pt", "BR")
+                    ).format(
+                        Date(horario)
+                    )
+            }
     }
 
     private fun campo(
@@ -205,7 +367,7 @@ class MainActivity : AppCompatActivity() {
 
         inputType =
             InputType.TYPE_CLASS_NUMBER or
-            InputType.TYPE_NUMBER_FLAG_DECIMAL
+                InputType.TYPE_NUMBER_FLAG_DECIMAL
     }
 
     private fun numero(
@@ -300,7 +462,6 @@ class MainActivity : AppCompatActivity() {
             kmViagem,
             minutos
         ).forEach {
-
             it.text.clear()
         }
 
@@ -321,7 +482,7 @@ class MainActivity : AppCompatActivity() {
 
         val distanciaTotal =
             numero(kmBusca) +
-            numero(kmViagem)
+                numero(kmViagem)
 
         val tempo =
             numero(minutos)
@@ -362,7 +523,7 @@ class MainActivity : AppCompatActivity() {
         val valorHora =
             if (tempo > 0) {
                 oferta /
-                (tempo / 60.0)
+                    (tempo / 60.0)
             } else {
                 0.0
             }
@@ -371,7 +532,6 @@ class MainActivity : AppCompatActivity() {
             distanciaTotal * boa
 
         val classificacao: String
-
         val cor: Int
 
         when {
@@ -443,23 +603,23 @@ class MainActivity : AppCompatActivity() {
 
         resultado.text =
             classificacao +
-            "\n\n" +
-            dinheiro.format(valorKm) +
-            "/km" +
-            "\n" +
-            horaTexto +
-            "\n" +
-            String.format(
-                Locale("pt", "BR"),
-                "%.1f",
-                distanciaTotal
-            ) +
-            " km totais" +
-            "\n\nOferta: " +
-            dinheiro.format(oferta) +
-            "\nPara ser BOA: mínimo " +
-            dinheiro.format(
-                valorMinimoBoa
-            )
+                "\n\n" +
+                dinheiro.format(valorKm) +
+                "/km" +
+                "\n" +
+                horaTexto +
+                "\n" +
+                String.format(
+                    Locale("pt", "BR"),
+                    "%.1f",
+                    distanciaTotal
+                ) +
+                " km totais" +
+                "\n\nOferta: " +
+                dinheiro.format(oferta) +
+                "\nPara ser BOA: mínimo " +
+                dinheiro.format(
+                    valorMinimoBoa
+                )
     }
 }
